@@ -18,13 +18,18 @@ A lightweight, single-file web app for turning an STL model into a slowly spinni
 
 ### Run it locally
 
-Download `index.html` and open it in a modern browser (Chrome, Edge, Firefox or Safari). An internet connection is needed the first time it loads, because the 3D and GIF libraries are fetched from a CDN.
+```bash
+git clone git@github.com:amzoo/stl-to-turntable-gif.git
+cd stl-to-turntable-gif
+open stl-turntable.html
+```
+
+Or just download `stl-turntable.html` and open it in a modern browser (Chrome, Edge, Firefox or Safari). An internet connection is needed the first time it loads, because the 3D and GIF libraries are fetched from a CDN.
 
 ### Host it on GitHub Pages
 
-1. Push this repository to GitHub.
-2. Go to **Settings → Pages**, set **Source** to *Deploy from a branch*, and choose `main` and `/ (root)`.
-3. The app will be live at `https://<your-username>.github.io/<repo-name>/`.
+1. In this repository on GitHub, go to **Settings → Pages**, set **Source** to *Deploy from a branch*, and choose `main` and `/ (root)`.
+2. The app will be live at <https://amzoo.github.io/stl-to-turntable-gif/stl-turntable.html>.
 
 ## How to use it
 
@@ -47,7 +52,7 @@ Download `index.html` and open it in a modern browser (Chrome, Edge, Firefox or 
 | 3D rendering, STL parsing, orbit controls, lighting environment | [three.js](https://threejs.org/) r147 (UMD build, plus `STLLoader`, `OrbitControls`, `BufferGeometryUtils`, `RoomEnvironment`) |
 | GIF encoding and color quantization | [gifenc](https://github.com/mattdesl/gifenc) 1.0.3 |
 
-Both libraries load from [jsDelivr](https://www.jsdelivr.com/). The whole app lives in `index.html`.
+Both libraries load from [jsDelivr](https://www.jsdelivr.com/). The whole app lives in `stl-turntable.html`.
 
 To make a GIF, the app renders each frame at the export size with the model rotated by `360° / frames`, reduces each frame to a 256-color palette, and encodes it. Your STL never leaves your computer.
 
@@ -55,8 +60,8 @@ To make a GIF, the app renders each frame at the export size with the model rota
 
 ```
 .
-├── index.html        # the entire app
+├── stl-turntable.html  # the entire app
 ├── README.md
 └── assets/
-    └── demo.gif      # README preview
+    └── demo.gif        # README preview
 ```
