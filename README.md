@@ -18,18 +18,7 @@ A lightweight, single-file web app for turning an STL model into a slowly spinni
 
 ### Run it locally
 
-```bash
-git clone git@github.com:amzoo/stl-to-turntable-gif.git
-cd stl-to-turntable-gif
-open stl-turntable.html
-```
-
-Or just download `stl-turntable.html` and open it in a modern browser (Chrome, Edge, Firefox or Safari). An internet connection is needed the first time it loads, because the 3D and GIF libraries are fetched from a CDN.
-
-### Host it on GitHub Pages
-
-1. In this repository on GitHub, go to **Settings → Pages**, set **Source** to *Deploy from a branch*, and choose `main` and `/ (root)`.
-2. The app will be live at <https://amzoo.github.io/stl-to-turntable-gif/stl-turntable.html>.
+Download `stl-turntable.html` and open it in a modern browser (Chrome, Edge, Firefox or Safari). An internet connection is needed the first time it loads, because the 3D and GIF libraries are fetched from a CDN.
 
 ## How to use it
 
@@ -56,12 +45,4 @@ Both libraries load from [jsDelivr](https://www.jsdelivr.com/). The whole app li
 
 To make a GIF, the app renders each frame at the export size with the model rotated by `360° / frames`, reduces each frame to a 256-color palette, and encodes it. Your STL never leaves your computer.
 
-## Project structure
-
-```
-.
-├── stl-turntable.html  # the entire app
-├── README.md
-└── assets/
-    └── demo.gif        # README preview
 ```
