@@ -44,5 +44,3 @@ Download `stl-turntable.html` and open it in a modern browser (Chrome, Edge, Fir
 Both libraries load from [jsDelivr](https://www.jsdelivr.com/). The whole app lives in `stl-turntable.html`.
 
 To make a GIF, the app renders each frame at the export size with the model rotated by `360° / frames`, reduces each frame to a 256-color palette, and encodes it. Your STL never leaves your computer.
-
-```
