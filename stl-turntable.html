@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>[hidden]{display:none!important}body{margin:0}img{max-width:100%}</style></head><body>
+<title>STL Turntable</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#E7EAED; --panel:#F6F7F8; --ink:#172029; --muted:#5A6570; --line:#D2D7DD;
+  --field:#FFFFFF; --accent:#1D6A86; --accent-ink:#FFFFFF; --accent-soft:#D5E7EE; --warn:#A5461B;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#101418; --panel:#171C21; --ink:#E2E7EC; --muted:#8B96A1; --line:#29313A;
+    --field:#0F1317; --accent:#4DA7C6; --accent-ink:#0A1216; --accent-soft:#1B3440; --warn:#E3895F;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#101418; --panel:#171C21; --ink:#E2E7EC; --muted:#8B96A1; --line:#29313A;
+  --field:#0F1317; --accent:#4DA7C6; --accent-ink:#0A1216; --accent-soft:#1B3440; --warn:#E3895F;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45}
+*{box-sizing:border-box}
+.app{height:100%;display:grid;grid-template-columns:minmax(0,1fr) 330px;grid-template-rows:auto minmax(0,1fr)}
+.bar{grid-column:1/-1;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+.bar h1{font-size:15px;font-weight:600;margin:0;letter-spacing:.01em}
+.bar .file{font-family:var(--mono);font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.stage{position:relative;display:flex;flex-direction:column;min-height:0;padding:16px;gap:10px}
+.fit{flex:1;min-height:0;display:grid;place-items:center}
+.viewport{position:relative;border-radius:4px;overflow:hidden;box-shadow:0 0 0 1px var(--line);max-width:100%}
+.viewport canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.viewport.drag::after{content:"Drop STL to load";position:absolute;inset:8px;border:2px dashed var(--accent);border-radius:4px;display:grid;place-items:center;font-weight:600;color:var(--accent);background:color-mix(in srgb,var(--panel) 80%,transparent)}
+.busy{position:absolute;inset:0;display:grid;place-items:center;background:color-mix(in srgb,var(--panel) 55%,transparent)}
+.busy div{background:var(--panel);border:1px solid var(--line);padding:12px 16px;border-radius:4px;min-width:200px;font-family:var(--mono);font-size:12px}
+.busy progress{width:100%;margin-top:8px;accent-color:var(--accent)}
+.hud{display:flex;flex-wrap:wrap;gap:6px 18px;font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.hud b{color:var(--ink);font-weight:500}
+.panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;min-height:0}
+.sec{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.sec h2{margin:0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.row>label:first-child:not(.check){width:74px;flex:none;color:var(--muted);font-size:13px}
+.row input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+.val{font-family:var(--mono);font-size:12px;width:44px;text-align:right;font-variant-numeric:tabular-nums}
+button,select,.filebtn{font:inherit;font-size:13px;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:4px;padding:5px 9px;cursor:pointer}
+button:hover,.filebtn:hover,select:hover{border-color:var(--muted)}
+button:focus-visible,select:focus-visible,input:focus-visible,.filebtn:focus-within{outline:2px solid var(--accent);outline-offset:1px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600;padding:8px 12px}
+button.primary:disabled{opacity:.5;cursor:wait}
+.mini{padding:3px 6px;font-family:var(--mono);font-size:11px}
+select{flex:1;min-width:0}
+.filebtn{display:inline-flex;align-items:center;gap:6px}
+.filebtn input{position:absolute;opacity:0;width:1px;height:1px}
+.hint{font-size:12px;color:var(--muted);margin:0}
+input[type=color]{width:34px;height:28px;padding:0 2px;border:1px solid var(--line);border-radius:4px;background:var(--field);cursor:pointer}
+.swatches{display:flex;gap:5px;flex-wrap:wrap}
+.sw{width:22px;height:22px;border-radius:50%;padding:0;border:1px solid var(--line);box-shadow:inset 0 0 0 2px var(--panel)}
+.sw[aria-pressed=true]{outline:2px solid var(--accent);outline-offset:1px}
+.check{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer}
+.check input{accent-color:var(--accent)}
+.result{display:flex;flex-direction:column;gap:8px}
+.result img{border-radius:4px;box-shadow:0 0 0 1px var(--line);align-self:flex-start;max-height:240px;object-fit:contain}
+.meta{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.msg{font-size:12px;color:var(--warn);margin:0}
+.shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px}
+.shot{display:flex;flex-direction:column;gap:4px}
+.shot img{width:100%;aspect-ratio:var(--ar,1);object-fit:contain;border-radius:3px;box-shadow:0 0 0 1px var(--line);background:repeating-conic-gradient(var(--line) 0 25%,var(--field) 0 50%) 0 0/12px 12px}
+.shot .row{gap:4px;flex-wrap:nowrap}
+.shot button{flex:1}
+.shot .meta{font-size:11px}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .35s ease-out}
+.flash.on{opacity:.55;transition:none}
+kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:0 4px;background:var(--field)}
+@media (max-width:760px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto auto auto;height:auto}
+  .stage{height:62vh}
+  .panel{border-left:0;border-top:1px solid var(--line);overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <header class="bar">
+    <h1>STL Turntable</h1>
+    <span class="file" id="fileLabel">Sample part loaded · drop or open an STL to replace it</span>
+    <label class="filebtn">Open STL…<input type="file" id="fileIn" accept=".stl,model/stl,application/sla"></label>
+  </header>
+
+  <main class="stage" id="stage">
+    <div class="fit" id="fit">
+      <div class="viewport" id="viewport">
+        <div class="flash" id="flash"></div>
+        <div class="busy" id="busy" hidden><div><span id="busyText">Rendering frames…</span><progress id="busyProg" max="1" value="0"></progress></div></div>
+      </div>
+    </div>
+    <div class="hud">
+      <span>Size <b id="dims">–</b></span>
+      <span>Triangles <b id="tris">–</b></span>
+      <span>GIF <b id="gifInfo">–</b></span>
+      <span>Drag to orbit · scroll to zoom</span>
+    </div>
+  </main>
+
+  <aside class="panel">
+    <section class="sec">
+      <h2>Align</h2>
+      <div class="row"><label for="upAxis">Up axis</label>
+        <select id="upAxis"><option value="z" selected>Z up (CAD / slicer)</option><option value="y">Y up</option></select></div>
+      <div class="row"><label for="rx">Rotate X</label><input type="range" id="rx" min="-180" max="180" step="1" value="0"><span class="val" id="rxv">0°</span></div>
+      <div class="row"><label></label><button class="mini" data-step="x" data-by="-90">−90°</button><button class="mini" data-step="x" data-by="90">+90°</button></div>
+      <div class="row"><label for="ry">Rotate Y</label><input type="range" id="ry" min="-180" max="180" step="1" value="0"><span class="val" id="ryv">0°</span></div>
+      <div class="row"><label></label><button class="mini" data-step="y" data-by="-90">−90°</button><button class="mini" data-step="y" data-by="90">+90°</button></div>
+      <div class="row"><label for="rz">Rotate Z</label><input type="range" id="rz" min="-180" max="180" step="1" value="0"><span class="val" id="rzv">0°</span></div>
+      <div class="row"><label></label><button class="mini" data-step="z" data-by="-90">−90°</button><button class="mini" data-step="z" data-by="90">+90°</button></div>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="guides" checked> Show axes &amp; grid</label>
+        <button id="resetAlign" class="mini">Reset</button>
+      </div>
+      <p class="hint">Model is centered on its bounding box. Red = X, green = Y (spin axis), blue = Z.</p>
+    </section>
+
+    <section class="sec">
+      <h2>Appearance</h2>
+      <div class="row"><label for="modelColor">Model</label><input type="color" id="modelColor" value="#e8702a">
+        <div class="swatches" id="modelSw"></div></div>
+      <div class="row"><label for="finish">Finish</label>
+        <select id="finish">
+          <option value="matte">Matte PLA</option>
+          <option value="satin" selected>Satin</option>
+          <option value="glossy">Glossy / resin</option>
+          <option value="metal">Metallic</option>
+          <option value="clay">Clay render</option>
+          <option value="wire">Wireframe</option>
+          <option value="normal">Normal map (rainbow)</option>
+        </select></div>
+      <div class="row"><label></label><label class="check"><input type="checkbox" id="smooth"> Smooth shading</label></div>
+      <div class="row"><label for="bgColor">Background</label><input type="color" id="bgColor" value="#1f2a33">
+        <div class="swatches" id="bgSw"></div></div>
+    </section>
+
+    <section class="sec">
+      <h2>Turntable</h2>
+      <div class="row"><label for="dur">Rotation</label><input type="range" id="dur" min="2" max="12" step="0.5" value="5"><span class="val" id="durv">5 s</span></div>
+      <div class="row"><label for="dir">Direction</label>
+        <select id="dir"><option value="1" selected>Counter-clockwise</option><option value="-1">Clockwise</option></select></div>
+      <div class="row"><label></label><label class="check"><input type="checkbox" id="preview" checked> Spin in preview</label>
+        <button id="resetView" class="mini">Reset view</button></div>
+      <p class="hint">The GIF uses the camera angle you see. Orbit to tilt it before exporting.</p>
+    </section>
+
+    <section class="sec">
+      <h2>Screenshot</h2>
+      <div class="row"><label for="shotRes">Resolution</label>
+        <select id="shotRes"><option value="1080" selected>1080 px (long side)</option><option value="2160">2160 px (4K)</option><option value="gif">Match GIF size</option></select></div>
+      <div class="row"><label></label><label class="check"><input type="checkbox" id="shotAlpha"> Transparent background</label></div>
+      <div class="row"><label></label><label class="check"><input type="checkbox" id="shotGuides"> Include axes &amp; grid</label></div>
+      <button class="primary" id="takeShot">Take screenshot</button>
+      <p class="hint">Captures the current view and spin angle as a PNG. Shortcut: <kbd>P</kbd>. Uncheck “Spin in preview” to hold a pose.</p>
+      <div class="shots" id="shots"></div>
+    </section>
+
+    <section class="sec">
+      <h2>Export GIF</h2>
+      <div class="row"><label for="size">Size</label>
+        <select id="size"><option value="320">320 px</option><option value="480" selected>480 px</option><option value="640">640 px</option><option value="800">800 px</option></select></div>
+      <div class="row"><label for="aspect">Frame</label>
+        <select id="aspect"><option value="1" selected>Square 1:1</option><option value="1.3333">4:3</option><option value="1.7778">16:9</option><option value="0.8">Portrait 4:5</option></select></div>
+      <div class="row"><label for="fps">Frame rate</label>
+        <select id="fps"><option value="10">10 fps</option><option value="15">15 fps</option><option value="20" selected>20 fps</option><option value="25">25 fps</option></select></div>
+      <button class="primary" id="makeGif">Make GIF</button>
+      <div class="result" id="result" hidden>
+        <img id="gifImg" alt="Rendered turntable GIF">
+        <span class="meta" id="gifMeta"></span>
+        <div class="row"><button id="saveGif">Save GIF</button></div>
+      </div>
+      <p class="msg" id="msg" hidden></p>
+    </section>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/STLLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/utils/BufferGeometryUtils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/environments/RoomEnvironment.js"></script>
+<script>window.exports = {};</script>
+<script src="https://cdn.jsdelivr.net/npm/gifenc@1.0.3/dist/gifenc.js"></script>
+<script>
+const GIFENC = window.exports; delete window.exports;
+const $ = id => document.getElementById(id);
+
+/* ---------- scene ---------- */
+const viewport = $('viewport');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.outputEncoding = THREE.sRGBEncoding;
+viewport.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envTex = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+scene.environment = envTex;
+
+const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 1e6);
+scene.add(camera);
+const key = new THREE.DirectionalLight(0xffffff, 1.0); key.position.set(3, 4, 5); camera.add(key);
+const rim = new THREE.DirectionalLight(0xffffff, 0.45); rim.position.set(-4, 3, -6); camera.add(rim);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enablePan = false; controls.enableDamping = true;
+
+// spin (world Y) -> align (user rotation) -> up (Z-up fix) -> mesh (centered)
+const spin = new THREE.Group(), align = new THREE.Group(), up = new THREE.Group();
+spin.add(align); align.add(up); scene.add(spin);
+let mesh = null, flatGeo = null, smoothGeo = null, radius = 1, fileName = 'sample';
+
+const guides = new THREE.Group(); scene.add(guides);
+let grid = null, axes = null;
+
+/* ---------- appearance ---------- */
+const MODEL_SW = [['Signal orange','#e8702a'],['Jade','#2f8f6f'],['Cobalt','#2c55c9'],['Ivory','#ece6d6'],['Silk silver','#b9bec4'],['Galaxy black','#26282c'],['Crimson','#b3242f']];
+const BG_SW = [['Slate','#1f2a33'],['Studio white','#ffffff'],['Warm grey','#d9d4cd'],['Black','#000000'],['Sky','#cfe3f2'],['Chroma green','#00b140']];
+
+function makeSwatches(host, list, input){
+  list.forEach(([name, hex]) => {
+    const b = document.createElement('button');
+    b.className = 'sw'; b.style.background = hex; b.title = name; b.setAttribute('aria-label', name);
+    b.onclick = () => { input.value = hex; input.dispatchEvent(new Event('input')); };
+    host.appendChild(b);
+  });
+  const sync = () => host.querySelectorAll('.sw').forEach((b, i) => b.setAttribute('aria-pressed', list[i][1] === input.value.toLowerCase()));
+  input.addEventListener('input', sync); sync();
+}
+makeSwatches($('modelSw'), MODEL_SW, $('modelColor'));
+makeSwatches($('bgSw'), BG_SW, $('bgColor'));
+
+function makeMaterial(){
+  const color = new THREE.Color($('modelColor').value);
+  const flat = !$('smooth').checked;
+  switch ($('finish').value){
+    case 'matte':  return new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0, flatShading: flat, envMapIntensity: 0.35 });
+    case 'glossy': return new THREE.MeshPhysicalMaterial({ color, roughness: 0.18, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.08, flatShading: flat, envMapIntensity: 0.45 });
+    case 'metal':  return new THREE.MeshStandardMaterial({ color, roughness: 0.28, metalness: 1, flatShading: flat, envMapIntensity: 1.0 });
+    case 'clay':   return new THREE.MeshStandardMaterial({ color, roughness: 1, metalness: 0, flatShading: flat, envMapIntensity: 0.5 });
+    case 'wire':   return new THREE.MeshBasicMaterial({ color, wireframe: true });
+    case 'normal': return new THREE.MeshNormalMaterial({ flatShading: flat });
+    default:       return new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.05, flatShading: flat, envMapIntensity: 0.4 });
+  }
+}
+function applyMaterial(){
+  if (!mesh) return;
+  mesh.material.dispose();
+  mesh.material = makeMaterial();
+  const wantSmooth = $('smooth').checked;
+  if (wantSmooth && !smoothGeo){
+    const g = flatGeo.clone(); g.deleteAttribute('normal');
+    smoothGeo = THREE.BufferGeometryUtils.mergeVertices(g, 1e-4 * radius);
+    smoothGeo.computeVertexNormals();
+  }
+  mesh.geometry = wantSmooth ? smoothGeo : flatGeo;
+}
+function applyBackground(){
+  const bg = new THREE.Color($('bgColor').value);
+  renderer.setClearColor(bg, 1);
+  rebuildGuides();
+}
+
+/* ---------- guides ---------- */
+function rebuildGuides(){
+  guides.clear();
+  const bg = new THREE.Color($('bgColor').value);
+  const light = bg.r * 0.3 + bg.g * 0.59 + bg.b * 0.11 > 0.5;
+  const c1 = light ? 0x8a929a : 0x5d6974, c2 = light ? 0xc3c8cd : 0x34404a;
+  const size = radius * 2.6;
+  grid = new THREE.GridHelper(size, 10, c1, c2);
+  grid.position.y = -radius * 1.02;
+  axes = new THREE.AxesHelper(radius * 1.25);
+  axes.material.depthTest = false; axes.renderOrder = 2;
+  guides.add(grid, axes);
+  guides.visible = $('guides').checked;
+}
+
+/* ---------- geometry ---------- */
+function setGeometry(geo, label){
+  if (!geo.attributes.normal) geo.computeVertexNormals();
+  geo.computeBoundingBox();
+  const c = new THREE.Vector3(); geo.boundingBox.getCenter(c);
+  geo.translate(-c.x, -c.y, -c.z);
+  geo.computeBoundingSphere();
+  radius = geo.boundingSphere.radius || 1;
+
+  if (flatGeo) flatGeo.dispose();
+  if (smoothGeo) { smoothGeo.dispose(); smoothGeo = null; }
+  flatGeo = geo;
+  if (!mesh){ mesh = new THREE.Mesh(geo, makeMaterial()); up.add(mesh); }
+  applyMaterial();
+
+  const tris = geo.index ? geo.index.count / 3 : geo.attributes.position.count / 3;
+  $('tris').textContent = Math.round(tris).toLocaleString();
+  $('fileLabel').textContent = label;
+  rebuildGuides();
+  updateAlign();
+  fitView();
+}
+
+function sampleGeometry(){
+  // a bracket-ish sample part in Z-up coordinates, like a CAD export
+  const g = new THREE.TorusKnotGeometry(18, 5.5, 220, 28, 2, 3).toNonIndexed();
+  g.rotateX(Math.PI / 2);
+  return g;
+}
+
+function loadFile(file){
+  if (!file) return;
+  if (!/\.stl$/i.test(file.name)) { showMsg(`${file.name} isn't an .stl file. Choose an STL (ASCII or binary).`); return; }
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const geo = new THREE.STLLoader().parse(r.result);
+      if (!geo.attributes.position || geo.attributes.position.count === 0) throw new Error('empty');
+      $('upAxis').value = 'z'; resetAlign(false);
+      setGeometry(geo, file.name);
+      fileName = file.name.replace(/\.stl$/i, '');
+      hideMsg(); $('result').hidden = true;
+    } catch (e) { showMsg(`Couldn't read ${file.name}. The file may be damaged or not a valid STL.`); }
+  };
+  r.readAsArrayBuffer(file);
+}
+$('fileIn').addEventListener('change', e => { loadFile(e.target.files[0]); e.target.value = ''; });
+['dragenter','dragover'].forEach(t => viewport.addEventListener(t, e => { e.preventDefault(); viewport.classList.add('drag'); }));
+['dragleave','drop'].forEach(t => viewport.addEventListener(t, e => { e.preventDefault(); viewport.classList.remove('drag'); }));
+viewport.addEventListener('drop', e => loadFile(e.dataTransfer.files[0]));
+
+/* ---------- alignment ---------- */
+const D2R = Math.PI / 180;
+function wrap(v){ return ((v + 180) % 360 + 360) % 360 - 180; }
+function updateAlign(){
+  up.rotation.set($('upAxis').value === 'z' ? -Math.PI / 2 : 0, 0, 0);
+  const x = +$('rx').value, y = +$('ry').value, z = +$('rz').value;
+  $('rxv').textContent = x + '°'; $('ryv').textContent = y + '°'; $('rzv').textContent = z + '°';
+  align.rotation.set(x * D2R, y * D2R, z * D2R, 'XYZ');
+  measure();
+}
+let measureT = 0;
+function measure(){
+  clearTimeout(measureT);
+  measureT = setTimeout(() => {
+    if (!mesh) return;
+    const keep = spin.rotation.y; spin.rotation.y = 0; spin.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(mesh, true);
+    spin.rotation.y = keep; spin.updateMatrixWorld(true);
+    const s = new THREE.Vector3(); box.getSize(s);
+    // report in Z-up terms: width (X) × depth (−Z world) × height (Y world)
+    const f = v => v >= 100 ? v.toFixed(0) : v.toFixed(1);
+    $('dims').textContent = `${f(s.x)} × ${f(s.z)} × ${f(s.y)} mm`;
+  }, 120);
+}
+function resetAlign(apply = true){ ['rx','ry','rz'].forEach(id => $(id).value = 0); if (apply) updateAlign(); }
+['rx','ry','rz','upAxis'].forEach(id => $(id).addEventListener('input', updateAlign));
+document.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => {
+  const el = $('r' + b.dataset.step); el.value = wrap(+el.value + +b.dataset.by); updateAlign();
+}));
+$('resetAlign').onclick = () => { $('upAxis').value = 'z'; resetAlign(); };
+$('guides').onchange = () => guides.visible = $('guides').checked;
+
+/* ---------- appearance events ---------- */
+['modelColor','finish','smooth'].forEach(id => $(id).addEventListener('input', applyMaterial));
+$('bgColor').addEventListener('input', applyBackground);
+
+/* ---------- view / layout ---------- */
+function aspect(){ return +$('aspect').value; }
+function fitView(){
+  const vfov = camera.fov * D2R;
+  const hfov = 2 * Math.atan(Math.tan(vfov / 2) * aspect());
+  const dist = radius / Math.sin(Math.min(vfov, hfov) / 2) * 1.2;
+  const dir = new THREE.Vector3(0, 0.38, 1).normalize();
+  camera.position.copy(dir.multiplyScalar(dist));
+  camera.near = dist / 100; camera.far = dist * 100; camera.updateProjectionMatrix();
+  controls.target.set(0, 0, 0); controls.minDistance = radius * 1.1; controls.maxDistance = dist * 6;
+  controls.update();
+}
+function layout(){
+  const fit = $('fit'); const W = fit.clientWidth, H = fit.clientHeight, a = aspect();
+  let w = W, h = W / a; if (h > H) { h = H; w = H * a; }
+  viewport.style.width = Math.floor(w) + 'px'; viewport.style.height = Math.floor(h) + 'px';
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(Math.floor(w), Math.floor(h), false);
+  camera.aspect = a; camera.updateProjectionMatrix();
+  updateGifInfo();
+}
+new ResizeObserver(layout).observe($('fit'));
+$('aspect').addEventListener('input', () => { layout(); fitView(); });
+$('resetView').onclick = fitView;
+
+function gifDims(){ const s = +$('size').value, a = aspect(); return a >= 1 ? [s, Math.round(s / a)] : [Math.round(s * a), s]; }
+function frameCount(){ return Math.round(+$('dur').value * +$('fps').value); }
+function updateGifInfo(){
+  const [w, h] = gifDims();
+  $('durv').textContent = (+$('dur').value) + ' s';
+  $('gifInfo').textContent = `${w}×${h} · ${frameCount()} frames · ${$('dur').value} s loop`;
+}
+['size','fps','dur'].forEach(id => $(id).addEventListener('input', updateGifInfo));
+
+/* ---------- loop ---------- */
+let capturing = false, last = performance.now();
+function tick(now){
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (!capturing){
+    if ($('preview').checked) spin.rotation.y += +$('dir').value * (2 * Math.PI / +$('dur').value) * dt;
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ---------- GIF ---------- */
+let gifBlob = null, gifUrl = null;
+const nextFrame = () => new Promise(r => requestAnimationFrame(() => r()));
+async function makeGif(){
+  if (capturing || !mesh) return;
+  const { GIFEncoder, quantize, applyPalette } = GIFENC;
+  if (!GIFEncoder) { showMsg('The GIF encoder did not load. Check your connection and reload the page.'); return; }
+  capturing = true; hideMsg();
+  $('makeGif').disabled = true; $('busy').hidden = false;
+  const [w, h] = gifDims(), n = frameCount(), fps = +$('fps').value;
+  const delay = Math.round(1000 / fps / 10) * 10;
+  const dir = +$('dir').value, start = spin.rotation.y;
+  const guidesWere = guides.visible; guides.visible = false;
+  const prevRatio = renderer.getPixelRatio(), prevSize = renderer.getSize(new THREE.Vector2());
+  renderer.setPixelRatio(1); renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  const enc = GIFEncoder();
+  try {
+    for (let i = 0; i < n; i++){
+      spin.rotation.y = start + dir * 2 * Math.PI * i / n;
+      renderer.render(scene, camera);
+      ctx.drawImage(renderer.domElement, 0, 0);
+      const px = ctx.getImageData(0, 0, w, h).data;
+      const palette = quantize(px, 256, { format: 'rgb565' });
+      const index = applyPalette(px, palette, 'rgb565');
+      enc.writeFrame(index, w, h, { palette, delay, repeat: 0 });
+      $('busyText').textContent = `Rendering frame ${i + 1} / ${n}`;
+      $('busyProg').value = (i + 1) / n;
+      if (i % 2 === 1) await nextFrame();
+    }
+    enc.finish();
+    gifBlob = new Blob([enc.bytes()], { type: 'image/gif' });
+    if (gifUrl) URL.revokeObjectURL(gifUrl);
+    gifUrl = URL.createObjectURL(gifBlob);
+    $('gifImg').src = gifUrl;
+    $('gifMeta').textContent = `${w}×${h} · ${n} frames @ ${fps} fps · ${(gifBlob.size / 1048576).toFixed(2)} MB`;
+    $('result').hidden = false;
+  } catch (e) {
+    showMsg('Rendering failed: ' + (e.message || e));
+  } finally {
+    spin.rotation.y = start;
+    renderer.setPixelRatio(prevRatio); renderer.setSize(prevSize.x, prevSize.y, false);
+    camera.aspect = aspect(); camera.updateProjectionMatrix();
+    guides.visible = guidesWere;
+    $('busy').hidden = true; $('makeGif').disabled = false; capturing = false;
+  }
+}
+$('makeGif').onclick = makeGif;
+
+let downloads = null;
+(async () => { try { downloads = await window.claude?.use?.('downloads'); } catch (e) { downloads = null; } })();
+const baseName = () => fileName.replace(/[^\w.-]+/g, '_') || 'model';
+async function saveBlob(blob, url, filename, kind){
+  if (downloads){
+    try { await downloads.save({ filename, data: blob }); hideMsg(); }
+    catch (e) { if (e && e.code !== 'declined') showMsg(`Saving is unavailable here. Right-click the ${kind} preview and choose "Save image as…".`); }
+    return;
+  }
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+$('saveGif').onclick = () => { if (gifBlob) saveBlob(gifBlob, gifUrl, `${baseName()}-turntable.gif`, 'GIF'); };
+
+/* ---------- screenshots ---------- */
+let shotNo = 0;
+function shotDims(){
+  const v = $('shotRes').value;
+  if (v === 'gif') return gifDims();
+  const s = +v, a = aspect();
+  return a >= 1 ? [s, Math.round(s / a)] : [Math.round(s * a), s];
+}
+function takeShot(){
+  if (capturing || !mesh) return;
+  capturing = true;
+  const [w, h] = shotDims();
+  const alpha = $('shotAlpha').checked;
+  const guidesWere = guides.visible; guides.visible = $('shotGuides').checked;
+  const prevRatio = renderer.getPixelRatio(), prevSize = renderer.getSize(new THREE.Vector2());
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  try {
+    renderer.setPixelRatio(1); renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    if (alpha) renderer.setClearColor(new THREE.Color($('bgColor').value), 0);
+    controls.update();
+    renderer.render(scene, camera);
+    cv.getContext('2d').drawImage(renderer.domElement, 0, 0);
+  } finally {
+    if (alpha) renderer.setClearColor(new THREE.Color($('bgColor').value), 1);
+    renderer.setPixelRatio(prevRatio); renderer.setSize(prevSize.x, prevSize.y, false);
+    camera.aspect = aspect(); camera.updateProjectionMatrix();
+    guides.visible = guidesWere; capturing = false;
+  }
+  const f = $('flash'); f.classList.add('on'); requestAnimationFrame(() => requestAnimationFrame(() => f.classList.remove('on')));
+  const n = ++shotNo;
+  const filename = `${baseName()}-shot-${String(n).padStart(2, '0')}.png`;
+  cv.toBlob(blob => {
+    if (!blob) { showMsg('The screenshot could not be encoded. Try a smaller resolution.'); return; }
+    const url = URL.createObjectURL(blob);
+    const card = document.createElement('div'); card.className = 'shot';
+    card.style.setProperty('--ar', w / h);
+    const img = document.createElement('img'); img.src = url; img.alt = `Screenshot ${n}`;
+    const meta = document.createElement('span'); meta.className = 'meta';
+    meta.textContent = `#${n} · ${w}×${h}${alpha ? ' · alpha' : ''}`;
+    const row = document.createElement('div'); row.className = 'row';
+    const save = document.createElement('button'); save.className = 'mini'; save.textContent = 'Save';
+    save.onclick = () => saveBlob(blob, url, filename, 'screenshot');
+    const del = document.createElement('button'); del.className = 'mini'; del.textContent = 'Remove';
+    del.onclick = () => { URL.revokeObjectURL(url); card.remove(); };
+    row.append(save, del); card.append(img, meta, row);
+    $('shots').prepend(card);
+  }, 'image/png');
+}
+$('takeShot').onclick = takeShot;
+document.addEventListener('keydown', e => {
+  if ((e.key === 'p' || e.key === 'P') && !e.metaKey && !e.ctrlKey && !e.altKey && !(e.target.matches && e.target.matches('input[type=text],input[type=number],textarea,select'))) { e.preventDefault(); takeShot(); }
+});
+
+function showMsg(t){ $('msg').textContent = t; $('msg').hidden = false; }
+function hideMsg(){ $('msg').hidden = true; }
+
+/* ---------- boot ---------- */
+applyBackground();
+setGeometry(sampleGeometry(), 'Sample part (torus knot) · drop or open an STL to replace it');
+fileName = 'sample';
+layout(); fitView();
+requestAnimationFrame(tick);
+</script>
+
+</body></html>
